@@ -5,21 +5,79 @@ const morgan = require('morgan');
 const compression = require('compression');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
 const { v4: uuidv4 } = require('uuid');
+const { calculateMatchScore } = require('./services/matchingService');
+const { analyzeSkillEvidence } = require('./services/evidenceService');
+const { buildGapRoadmap } = require('./services/roadmapService');
+const { buildResumeSuggestions } = require('./services/resumeService');
+const { buildInterviewQuestions, evaluateInterviewAnswer, selectAdaptiveQuestion } = require('./services/interviewService');
+const { calculateCareerReadiness } = require('./services/readinessService');
+const { compareJobs } = require('./services/comparisonService');
+const { recognizeImage } = require('./services/ocrService');
+const { getProviderStatus } = require('./services/aiService');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'careermatch-dev-secret';
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:4173',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:4173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
+app.options('*', cors());
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      'text/plain',
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'application/octet-stream',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+    ];
+    const extension = String(file.originalname || '').toLowerCase();
+    const isTextFile = extension.endsWith('.txt');
+    const isPdf = extension.endsWith('.pdf');
+    const isDocx = extension.endsWith('.docx');
+    const isDoc = extension.endsWith('.doc');
+
+    if (allowed.includes(file.mimetype) || isTextFile || isPdf || isDocx || isDoc) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error('Unsupported file type. Please upload a PDF, DOCX, DOC or TXT file.'));
+  },
+});
 
 const users = new Map();
 const resumes = new Map();
@@ -36,9 +94,7 @@ function createToken(user) {
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const tokenFromHeader = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  const tokenFromBody = req.body && req.body.token ? req.body.token : null;
-  const tokenFromQuery = req.query && req.query.token ? req.query.token : null;
-  const token = tokenFromHeader || tokenFromBody || tokenFromQuery;
+  const token = tokenFromHeader;
 
   if (!token) {
     return res.status(401).json({ message: 'Authentication required.' });
@@ -129,67 +185,58 @@ function inferStructureFromResume(text = '') {
   };
 }
 
-function calculateMatchScore(resumeProfile, jdProfile) {
-  const resumeSkills = new Set((resumeProfile.skills || []).map(normalizeSkillValue));
-  const requiredSkills = jdProfile.requiredSkills || [];
-  const preferredSkills = jdProfile.preferredSkills || [];
+async function extractTextFromUploadedFile(file) {
+  if (!file || !file.buffer) {
+    throw new Error('Resume file is required.');
+  }
 
-  const matchedRequired = requiredSkills.filter((skill) => resumeSkills.has(normalizeSkillValue(skill)));
-  const gappedRequired = requiredSkills.filter((skill) => !resumeSkills.has(normalizeSkillValue(skill)));
-  const matchedPreferred = preferredSkills.filter((skill) => resumeSkills.has(normalizeSkillValue(skill)));
+  const fileName = String(file.originalname || '').toLowerCase();
+  const mimeType = String(file.mimetype || '').toLowerCase();
 
-  // Weighted scoring formula
-  const requiredCoverage = requiredSkills.length ? (matchedRequired.length / requiredSkills.length) * 100 : 100;
-  const preferredCoverage = preferredSkills.length ? (matchedPreferred.length / preferredSkills.length) * 100 : 80;
-  
-  // Scoring breakdown
-  const requiredSkillScore = Math.min(100, requiredCoverage);
-  const preferredSkillScore = Math.min(100, preferredCoverage * 0.5 + 50);
-  const semanticBoost = Math.min(100, 65 + (matchedRequired.length * 8));
-  const experienceScore = resumeProfile.experience ? Math.min(100, 60 + (matchedRequired.length * 5)) : 40;
-  
-  // Final weighted score
-  const finalScore = Math.round(
-    (requiredSkillScore * 0.45) + 
-    (preferredSkillScore * 0.15) + 
-    (semanticBoost * 0.25) + 
-    (experienceScore * 0.15)
-  );
+  if (mimeType.includes('pdf') || fileName.endsWith('.pdf')) {
+    const data = await pdfParse(file.buffer);
+    if (data.text?.trim()) return { text: data.text, warning: '' };
+    return recognizeImage(file.buffer);
+  }
 
-  return {
-    overallScore: Math.max(0, Math.min(100, finalScore)),
-    strengths: matchedRequired.slice(0, 5),
-    gaps: gappedRequired.slice(0, 5),
-    matchedPreferred: matchedPreferred.slice(0, 3),
-    scoringBreakdown: {
-      requiredSkills: requiredSkillScore,
-      preferredSkills: preferredSkillScore,
-      semanticMatch: semanticBoost,
-      experienceAlignment: experienceScore,
-    },
-    readiness: finalScore >= 80 ? 'Ready to Apply' : finalScore >= 60 ? 'Good Fit - Minor Gaps' : finalScore >= 40 ? 'Possible Fit - Notable Gaps' : 'Not a Strong Match',
-    recommendations: generateRecommendations(gappedRequired, matchedRequired, finalScore),
-  };
+  if (mimeType.includes('word') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+    const result = await mammoth.extractRawText({ buffer: file.buffer });
+    return { text: result.value || '', warning: '' };
+  }
+
+  if (mimeType.includes('text') || fileName.endsWith('.txt')) {
+    return { text: file.buffer.toString('utf8'), warning: '' };
+  }
+
+  if (mimeType.startsWith('image/') || /\.(png|jpe?g)$/i.test(fileName)) {
+    return recognizeImage(file.buffer);
+  }
+
+  throw new Error('Unsupported file type. Please upload a PDF, DOCX, DOC, or TXT file.');
 }
 
-function generateRecommendations(gaps, matches, score) {
-  const recommendations = [];
-  
-  if (gaps.length > 0) {
-    recommendations.push(`Learn these critical skills: ${gaps.slice(0, 3).join(', ')}.`);
-  }
-  
-  if (matches.length >= 3) {
-    recommendations.push(`Highlight your expertise in: ${matches.slice(0, 3).join(', ')} in your resume summary.`);
-  }
-  
-  if (score < 70) {
-    recommendations.push(`Consider gaining more experience with the core tech stack before applying.`);
-  }
-  
-  recommendations.push('Tailor your resume description to match JD terminology and priorities.');
-  
-  return recommendations.slice(0, 4);
+function createResumeRecord({ userId, candidateName, targetRole, resumeText, extractionWarning = '' }) {
+  const parsedProfile = inferStructureFromResume(resumeText);
+  parsedProfile.skillEvidence = analyzeSkillEvidence(parsedProfile.skills, resumeText);
+  const resumeId = uuidv4();
+  const resumeRecord = {
+    id: resumeId,
+    userId,
+    candidateName: candidateName || parsedProfile.candidateName,
+    targetRole: targetRole || 'Target Role',
+    parsedProfile,
+    extractionWarning,
+    createdAt: new Date().toISOString(),
+  };
+
+  resumes.set(resumeId, resumeRecord);
+  return {
+    resumeId,
+    candidateName: resumeRecord.candidateName,
+    targetRole: resumeRecord.targetRole,
+    parsedProfile,
+    extractionWarning: resumeRecord.extractionWarning,
+  };
 }
 
 function buildJdProfile(jdInput) {
@@ -291,25 +338,85 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/resumes/upload', authMiddleware, (req, res) => {
   const { resumeText, candidateName, targetRole } = req.body || {};
+  const resolvedName = candidateName && String(candidateName).trim()
+    ? String(candidateName).trim()
+    : (req.user && req.user.email ? (users.get(String(req.user.email).toLowerCase())?.name || 'Candidate') : 'Candidate');
+
+  if (!targetRole || !String(targetRole).trim()) {
+    return res.status(400).json({ message: 'Target role is required.' });
+  }
+
+  if (!resolvedName || !String(resolvedName).trim()) {
+    return res.status(400).json({ message: 'Candidate name is required.' });
+  }
 
   if (!resumeText) {
     return res.status(400).json({ message: 'Resume text is required.' });
   }
 
-  const resumeId = uuidv4();
-  const parsedProfile = inferStructureFromResume(resumeText);
-  const resumeRecord = {
-    id: resumeId,
+  const result = createResumeRecord({
     userId: req.user.id,
-    candidateName: candidateName || parsedProfile.candidateName,
-    targetRole: targetRole || 'Target Role',
-    parsedProfile,
-    createdAt: new Date().toISOString(),
-  };
+    candidateName: resolvedName,
+    targetRole: String(targetRole).trim(),
+    resumeText,
+  });
 
-  resumes.set(resumeId, resumeRecord);
+  return res.status(201).json({ message: 'Resume uploaded successfully.', ...result });
+});
 
-  return res.status(201).json({ message: 'Resume uploaded successfully.', resumeId, parsedProfile });
+app.post('/api/resumes/upload-file', authMiddleware, upload.single('resumeFile'), async (req, res) => {
+  try {
+    const candidateName = req.body?.candidateName && String(req.body.candidateName).trim()
+      ? String(req.body.candidateName).trim()
+      : (req.user && req.user.email ? (users.get(String(req.user.email).toLowerCase())?.name || 'Candidate') : 'Candidate');
+    const targetRole = req.body?.targetRole && String(req.body.targetRole).trim() ? String(req.body.targetRole).trim() : '';
+
+    if (!candidateName || !String(candidateName).trim()) {
+      return res.status(400).json({ message: 'Candidate name is required.' });
+    }
+
+    if (!targetRole) {
+      return res.status(400).json({ message: 'Target role is required.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please select a resume file to upload.' });
+    }
+
+    const extraction = await extractTextFromUploadedFile(req.file);
+    if (!extraction.text || !extraction.text.trim()) {
+      return res.status(400).json({ message: 'The uploaded file did not contain readable resume text.' });
+    }
+
+    const result = createResumeRecord({
+      userId: req.user.id,
+      candidateName,
+      targetRole,
+      resumeText: extraction.text,
+      extractionWarning: extraction.warning,
+    });
+
+    return res.status(201).json({ message: 'Resume file uploaded successfully.', ...result });
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Unable to process uploaded resume file.' });
+  }
+});
+
+// POST /api/resume-ai/suggestions - generate JD-specific, truth-guarded suggestions
+app.post('/api/resume-ai/suggestions', authMiddleware, (req, res) => {
+  const { resumeId, jdId } = req.body || {};
+  const resume = resumes.get(resumeId);
+  const jd = jds.get(jdId);
+
+  if (!resume || resume.userId !== req.user.id || !jd || jd.userId !== req.user.id) {
+    return res.status(404).json({ message: 'Resume or job description not found.' });
+  }
+
+  return res.json({
+    resumeId,
+    jdId,
+    ...buildResumeSuggestions(resume.parsedProfile, jd),
+  });
 });
 
 app.post('/api/jd/analyze', authMiddleware, (req, res) => {
@@ -320,6 +427,7 @@ app.post('/api/jd/analyze', authMiddleware, (req, res) => {
   }
 
   const jdProfile = buildJdProfile({ title, company, text });
+  jdProfile.userId = req.user.id;
   jds.set(jdProfile.jdId, jdProfile);
 
   return res.json({
@@ -333,6 +441,28 @@ app.post('/api/jd/analyze', authMiddleware, (req, res) => {
   });
 });
 
+app.get('/api/jobs', authMiddleware, (req, res) => {
+  const jobs = Array.from(jds.values())
+    .filter((job) => job.userId === req.user.id)
+    .map(({ jdId, title, company, requiredSkills, preferredSkills, responsibilities }) => ({
+      jdId, title, company, requiredSkills, preferredSkills, responsibilities,
+    }));
+  return res.json({ jobs });
+});
+
+app.post('/api/matches/compare', authMiddleware, (req, res) => {
+  const { resumeId, jdIds } = req.body || {};
+  if (!resumeId || !Array.isArray(jdIds) || jdIds.length < 2) {
+    return res.status(400).json({ message: 'resumeId and at least two jdIds are required.' });
+  }
+  const resume = resumes.get(resumeId);
+  const jobs = jdIds.map((jdId) => jds.get(jdId));
+  if (!resume || resume.userId !== req.user.id || jobs.some((job) => !job || job.userId !== req.user.id)) {
+    return res.status(404).json({ message: 'Resume or job description not found.' });
+  }
+  return res.json({ resumeId, comparisons: compareJobs({ resume, jobs, calculateMatch: calculateMatchScore }) });
+});
+
 app.post('/api/match', authMiddleware, (req, res) => {
   const { resumeId, jdId } = req.body || {};
 
@@ -343,7 +473,7 @@ app.post('/api/match', authMiddleware, (req, res) => {
   const resume = resumes.get(resumeId);
   const jd = jds.get(jdId);
 
-  if (!resume || !jd) {
+  if (!resume || !jd || resume.userId !== req.user.id || jd.userId !== req.user.id) {
     return res.status(404).json({ message: 'Resume or job description not found.' });
   }
 
@@ -366,7 +496,13 @@ app.post('/api/match', authMiddleware, (req, res) => {
     strengths: result.strengths,
     gaps: result.gaps,
     matchedPreferred: result.matchedPreferred,
+    preferredGaps: result.preferredGaps,
+    skillEvidence: resume.parsedProfile.skillEvidence || [],
+    weights: result.weights,
+    factorScores: result.factorScores,
+    contributions: result.contributions,
     scoringBreakdown: result.scoringBreakdown,
+    explanation: result.explanation,
     recommendations: result.recommendations,
   });
 });
@@ -374,16 +510,49 @@ app.post('/api/match', authMiddleware, (req, res) => {
 app.get('/api/dashboard', authMiddleware, (req, res) => {
   const userResumes = Array.from(resumes.values()).filter((resume) => resume.userId === req.user.id);
   const latestResume = userResumes[userResumes.length - 1];
+  const latestMatch = Array.from(matches.values()).filter((match) => match.userId === req.user.id).pop();
+  const userInterviewSessions = Array.from(interviewSessions.values()).filter((session) => session.userId === req.user.id);
+  const userRoadmapItems = Array.from(roadmapProgress.values()).filter((item) => item.userId === req.user.id);
+  const readiness = calculateCareerReadiness({
+    resume: latestResume,
+    match: latestMatch,
+    interviewSessions: userInterviewSessions,
+    roadmapItems: userRoadmapItems,
+  });
   const summary = {
     resumeHealth: latestResume ? 'Strong' : 'No resume uploaded yet',
     selectedRole: latestResume?.targetRole || 'Not set',
     criticalSkillGaps: latestResume ? ['sql', 'aws'] : [],
-    interviewReadiness: 82,
-    roadmapProgress: 40,
+    interviewReadiness: readiness.interviewReadiness,
+    roadmapProgress: readiness.roadmapProgress,
+    ...readiness,
     totalResumes: userResumes.length,
+    profile: {
+      name: latestResume?.candidateName || users.get(req.user.email)?.name || 'Candidate',
+      email: users.get(req.user.email)?.email || req.user.email,
+      targetRole: latestResume?.targetRole || 'Target role not set',
+      skills: latestResume?.parsedProfile?.skills || [],
+      education: latestResume?.parsedProfile?.education || 'Upload a resume to extract education',
+      experience: latestResume?.parsedProfile?.experience || 'Upload a resume to extract experience',
+    },
   };
 
   return res.json(summary);
+});
+
+app.get('/api/readiness', authMiddleware, (req, res) => {
+  const latestResume = Array.from(resumes.values()).filter((resume) => resume.userId === req.user.id).pop();
+  const latestMatch = Array.from(matches.values()).filter((match) => match.userId === req.user.id).pop();
+  return res.json(calculateCareerReadiness({
+    resume: latestResume,
+    match: latestMatch,
+    interviewSessions: Array.from(interviewSessions.values()).filter((session) => session.userId === req.user.id),
+    roadmapItems: Array.from(roadmapProgress.values()).filter((item) => item.userId === req.user.id),
+  }));
+});
+
+app.get('/api/ai/status', authMiddleware, (req, res) => {
+  return res.json(getProviderStatus());
 });
 
 app.post('/api/skill-gap-analysis', authMiddleware, (req, res) => {
@@ -405,29 +574,18 @@ app.post('/api/skill-gap-analysis', authMiddleware, (req, res) => {
     return res.status(404).json({ message: 'Resume or job description not found.' });
   }
 
-  const gaps = match.gaps || [];
-  const roadmap = gaps.map((skill, index) => ({
-    skill,
-    priority: index < 2 ? 'Critical' : index < 4 ? 'High' : 'Medium',
-    estimatedWeeks: (index + 1) * 2,
-    resources: [
-      `Free online course: ${skill.toUpperCase()} Fundamentals`,
-      `Udemy or Coursera course in ${skill}`,
-      `Official ${skill} documentation and tutorials`,
-      `GitHub projects using ${skill}`,
-      `Local meetup or community group`,
-    ],
-    practiceProjects: [
-      `Build a small project using ${skill}`,
-      `Contribute to open-source projects using ${skill}`,
-      `Create a portfolio project highlighting ${skill}`,
-    ]
-  }));
+  const gaps = [...(match.gaps || []), ...(match.preferredGaps || [])];
+  const roadmap = buildGapRoadmap({
+    requiredGaps: match.gaps || [],
+    preferredGaps: match.preferredGaps || [],
+    responsibilities: jd.responsibilities || [],
+    skillEvidence: resume.parsedProfile.skillEvidence || [],
+  });
 
   return res.json({
     matchId,
     totalGaps: gaps.length,
-    criticalSkills: gaps.slice(0, 2),
+    criticalSkills: roadmap.filter((item) => item.priority === 'Critical').map((item) => item.skill),
     improvementRoadmap: roadmap,
     estimatedTimeToReady: roadmap.reduce((sum, item) => sum + item.estimatedWeeks, 0) + ' weeks',
     nextSteps: [
@@ -447,27 +605,35 @@ app.get('/api/resumes', authMiddleware, (req, res) => {
   return res.json({ resumes: userResumes });
 });
 
+// GET /api/resumes/:id/evidence - inspect the evidence supporting extracted skills
+app.get('/api/resumes/:id/evidence', authMiddleware, (req, res) => {
+  const resume = resumes.get(req.params.id);
+  if (!resume || resume.userId !== req.user.id) {
+    return res.status(404).json({ message: 'Resume not found.' });
+  }
+
+  return res.json({
+    resumeId: resume.id,
+    targetRole: resume.targetRole,
+    skillEvidence: resume.parsedProfile.skillEvidence || [],
+  });
+});
+
 // POST /api/interview/start — generate interview questions from a match
 app.post('/api/interview/start', authMiddleware, (req, res) => {
   const { matchId } = req.body || {};
   const match = matchId ? matches.get(matchId) : null;
+  if (match && match.userId !== req.user.id) return res.status(404).json({ message: 'Match not found.' });
+  const resume = match ? resumes.get(match.resumeId) : null;
+  const jd = match ? jds.get(match.jdId) : null;
+  const questions = buildInterviewQuestions({
+    strengths: match?.strengths || [],
+    gaps: [...(match?.gaps || []), ...(match?.preferredGaps || [])],
+    skillEvidence: resume?.parsedProfile?.skillEvidence || [],
+    targetRole: resume?.targetRole || jd?.title || 'this role',
+  });
   const sessionId = uuidv4();
-
-  const strengths = match?.strengths || [];
-  const gaps = match?.gaps || [];
-
-  const questions = [
-    { id: 'q1', category: 'HR', question: 'Tell me about yourself and your background.', hint: 'Cover education, skills, and motivation.' },
-    { id: 'q2', category: 'Technical', question: strengths[0] ? `Walk me through a project where you used ${strengths[0]}.` : 'Describe a technical project you are proud of.', hint: 'Use STAR method.' },
-    { id: 'q3', category: 'Technical', question: gaps[0] ? `This role requires ${gaps[0]}. How do you plan to close that gap?` : 'How do you approach learning a new technology?', hint: 'Be specific about your learning plan.' },
-    { id: 'q4', category: 'Behavioral', question: 'Describe a time you handled a challenging deadline.', hint: 'Focus on prioritization and outcome.' },
-    { id: 'q5', category: 'Technical', question: 'How would you explain a machine learning model to a non-technical stakeholder?', hint: 'Think business impact, not math.' },
-    { id: 'q6', category: 'HR', question: 'Where do you see yourself in 3 years?', hint: 'Align with role growth.' },
-    { id: 'q7', category: 'Behavioral', question: 'Tell me about a time you made a mistake and how you handled it.', hint: 'Show accountability and growth.' },
-    { id: 'q8', category: 'Resume-Specific', question: 'Walk me through your most technically challenging project.', hint: 'Highlight problem, approach, tools, outcomes.' },
-  ];
-
-  const session = { sessionId, userId: req.user.id, matchId, questions, answers: [], scores: [], createdAt: new Date().toISOString() };
+  const session = { sessionId, userId: req.user.id, matchId, questions, answers: [], scores: [], weaknesses: [], createdAt: new Date().toISOString() };
   interviewSessions.set(sessionId, session);
 
   return res.json({ sessionId, questionCount: questions.length, questions });
@@ -478,31 +644,17 @@ app.post('/api/interview/answer', authMiddleware, (req, res) => {
   const { sessionId, questionId, answer } = req.body || {};
   if (!answer) return res.status(400).json({ message: 'Answer is required.' });
 
-  const wordCount = String(answer).trim().split(/\s+/).length;
-  const hasNumbers = /\d+/.test(answer);
-  const hasAction = /\b(built|created|developed|implemented|designed|improved|achieved|reduced|increased)\b/i.test(answer);
-  const isLong = wordCount >= 50;
-
-  let score = 40;
-  const feedback = [];
-  if (isLong) { score += 20; } else { feedback.push('Try to provide a more detailed answer (aim for 50+ words).'); }
-  if (hasNumbers) { score += 15; feedback.push('Good use of specific numbers or metrics.'); }
-  if (hasAction) { score += 15; feedback.push('Strong action verbs detected.'); }
-  if (/result|outcome|impact/i.test(answer)) { score += 10; feedback.push('You mentioned results — excellent!'); }
-  if (feedback.length === 0) feedback.push('Add specific examples and measurable outcomes.');
-  score = Math.min(100, score);
-
-  const level = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Needs Work';
-
-  // Update session
   const session = sessionId ? interviewSessions.get(sessionId) : null;
-  if (session) {
-    session.answers.push({ questionId, answer });
-    session.scores.push(score);
-    interviewSessions.set(sessionId, session);
-  }
+  if (!session || session.userId !== req.user.id) return res.status(404).json({ message: 'Interview session not found.' });
+  const question = session.questions.find((item) => item.id === questionId) || {};
+  const evaluation = evaluateInterviewAnswer(answer, question);
+  session.answers.push({ questionId, answer });
+  session.scores.push(evaluation.score);
+  session.weaknesses.push(evaluation.weakestArea);
+  const nextQuestion = selectAdaptiveQuestion(session.questions, session.answers.map((item) => item.questionId), evaluation.weakestArea);
+  interviewSessions.set(sessionId, session);
 
-  return res.json({ score, level, feedback, wordCount });
+  return res.json({ ...evaluation, nextQuestion, readinessScore: Math.round(session.scores.reduce((sum, score) => sum + score, 0) / session.scores.length) });
 });
 
 // GET /api/applications — list user applications

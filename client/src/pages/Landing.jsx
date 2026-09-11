@@ -1,168 +1,351 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isAuthenticated } from '../services/api';
+import {
+  IconCpu,
+  IconTarget,
+  IconFileText,
+  IconCompass,
+  IconMic,
+  IconCheckCircle,
+  IconArrowRight,
+  IconShieldCheck,
+  IconLayers,
+  IconBarChart,
+  IconSparkles,
+  IconCheck,
+  IconX,
+  IconCode
+} from '../components/Icons';
 
-const features = [
-  { icon: '🎯', title: 'Explainable Match Score', desc: 'See exactly why you matched or missed — factor by factor, not just a number.' },
-  { icon: '🧠', title: 'AI Skill Gap Analysis', desc: 'Identify critical vs low-priority gaps and get a ranked learning roadmap.' },
-  { icon: '📄', title: 'Resume Intelligence', desc: 'Parse, analyze, and tailor your resume for each target role using ATS insights.' },
-  { icon: '💬', title: 'Adaptive Interview Prep', desc: 'Practice interviews that adapt based on your weak areas and resume content.' },
-  { icon: '🗺️', title: 'Skill Roadmap', desc: 'Transform missing skills into step-by-step action plans with progress tracking.' },
-  { icon: '📊', title: 'Career Dashboard', desc: 'Track your readiness, applications, and skill development in one place.' },
-];
-
-const steps = [
-  { num: '01', title: 'Upload Resume', desc: 'Paste or upload your resume. Our AI extracts skills, experience, and education.' },
-  { num: '02', title: 'Paste Job Description', desc: 'Add any JD. The system separates required vs preferred qualifications.' },
-  { num: '03', title: 'Get Your Match Report', desc: 'Receive an explainable score breakdown with strengths, gaps, and actions.' },
-  { num: '04', title: 'Improve & Practice', desc: 'Follow your roadmap, practice interviews, and track progress over time.' },
+const DEMO_PROFILES = [
+  {
+    id: 'fullstack',
+    role: 'Full-Stack Software Engineer',
+    targetCompany: 'Stripe / TechScale Labs',
+    matchScore: 86,
+    candidateSkills: ['React', 'Node.js', 'PostgreSQL', 'TypeScript', 'REST APIs', 'Git', 'Jest'],
+    requiredSkills: ['React', 'Node.js', 'PostgreSQL', 'TypeScript', 'Docker', 'System Design'],
+    matchedSkills: ['React', 'Node.js', 'PostgreSQL', 'TypeScript'],
+    gaps: ['Docker', 'System Design'],
+    sampleQuestion: 'How would you structure database connection pooling in Express to prevent connection exhaustion under spike traffic?',
+  },
+  {
+    id: 'data-ai',
+    role: 'Staff Machine Learning Engineer',
+    targetCompany: 'Scale AI / CoreData',
+    matchScore: 78,
+    candidateSkills: ['Python', 'SQL', 'Pandas', 'Scikit-learn', 'PyTorch', 'REST APIs'],
+    requiredSkills: ['Python', 'SQL', 'PyTorch', 'Transformers', 'Kubernetes', 'MLOps'],
+    matchedSkills: ['Python', 'SQL', 'PyTorch'],
+    gaps: ['Transformers', 'Kubernetes', 'MLOps'],
+    sampleQuestion: 'Walk me through how you detect and prevent subtle data leakage during cross-validation of sequential feature pipelines.',
+  },
+  {
+    id: 'devops',
+    role: 'Cloud Infrastructure / SRE',
+    targetCompany: 'Datadog / CloudOps',
+    matchScore: 91,
+    candidateSkills: ['Linux', 'Docker', 'Kubernetes', 'AWS', 'Terraform', 'CI/CD', 'Prometheus'],
+    requiredSkills: ['Docker', 'Kubernetes', 'AWS', 'Terraform', 'CI/CD'],
+    matchedSkills: ['Docker', 'Kubernetes', 'AWS', 'Terraform', 'CI/CD'],
+    gaps: ['Helm Charts'],
+    sampleQuestion: 'Describe your approach to executing zero-downtime rolling upgrades across stateful multi-region Kubernetes clusters.',
+  },
 ];
 
 export default function Landing() {
   const authed = isAuthenticated();
+  const [activeProfile, setActiveProfile] = useState(DEMO_PROFILES[0]);
 
   return (
-    <div style={{ overflowX: 'hidden' }}>
+    <div className="page-wrapper landing-page" style={{ paddingTop: 0 }}>
+      <div className="container">
 
-      {/* Hero */}
-      <section style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        padding: '100px var(--space-6) var(--space-16)',
-        textAlign: 'center',
-      }}>
-        {/* Decorative orbs */}
-        <div className="orb orb-purple" style={{ width: 600, height: 600, top: -100, left: -200 }} />
-        <div className="orb orb-pink" style={{ width: 400, height: 400, bottom: 0, right: -150 }} />
+        {/* Hero Section */}
+        <section className="landing-hero">
+          <div className="landing-hero-copy">
+            <div className="hero-badge animate-fade-in">
+              <div className="hero-badge-dot" />
+              <span>AI-powered job search</span>
+            </div>
 
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 760 }}>
-          <div className="badge badge-purple animate-fade-in-up" style={{ marginBottom: 'var(--space-5)' }}>
-            🚀 AI-Powered Career Intelligence Platform
+            <h1 className="animate-fade-in-up delay-1">
+              Find the latest jobs that <span>match your resume.</span>
+            </h1>
+
+            <p className="animate-fade-in-up delay-2">
+              Upload your resume once. CareerMatch AI scans thousands of roles, understands your real skills, and shows you where you are most likely to get shortlisted.
+            </p>
+
+            <div className="landing-hero-actions animate-fade-in-up delay-3">
+              <Link to={authed ? '/dashboard' : '/register'} className="btn btn-primary btn-lg">
+                <span>{authed ? 'Open my dashboard' : 'Upload resume free'}</span>
+                <IconArrowRight size={17} />
+              </Link>
+              <a href="#sandbox" className="text-link">See how it works <IconArrowRight size={15} /></a>
+            </div>
+
+            <div className="landing-trust-row animate-fade-in-up delay-3">
+              <div className="trust-avatars"><span>AK</span><span>RS</span><span>PM</span><span>+</span></div>
+              <div><strong>80,000+ job seekers</strong><small>find better matches every month</small></div>
+            </div>
           </div>
 
-          <h1 className="animate-fade-in-up stagger-1" style={{ marginBottom: 'var(--space-5)' }}>
-            Land Your Dream Job with{' '}
-            <span className="gradient-text">Intelligent Career Matching</span>
-          </h1>
+          <div className="match-preview animate-fade-in-up delay-2" aria-label="Example job match preview">
+            <div className="match-preview-glow" />
+            <div className="match-preview-window">
+              <div className="preview-topline"><span className="preview-dots"><i /><i /><i /></span><span>your match report</span><span className="preview-live">LIVE</span></div>
+              <div className="preview-profile"><div className="preview-avatar">AR</div><div><strong>Alex's job matches</strong><small>Based on your resume and skills</small></div><span className="preview-score">86%</span></div>
+              <div className="preview-job"><div className="job-logo purple">S</div><div className="job-info"><strong>Senior Product Designer</strong><span>Stripe <b>Remote</b></span><div className="preview-tags"><em>Figma</em><em>Research</em><em>+3 skills</em></div></div><span className="job-match">Great match</span></div>
+              <div className="preview-job"><div className="job-logo orange">A</div><div className="job-info"><strong>Product Designer II</strong><span>Atlassian <b>Hybrid</b></span><div className="preview-tags"><em>UX Strategy</em><em>Systems</em></div></div><span className="job-match">Good match</span></div>
+              <div className="preview-footer"><IconCheckCircle size={16} /><span>Skills verified from your resume</span><IconArrowRight size={15} /></div>
+            </div>
+            <div className="preview-float-card"><IconSparkles size={17} /><span><strong>Personalized for you</strong><small>Not just keyword matching</small></span></div>
+          </div>
+        </section>
 
-          <p className="animate-fade-in-up stagger-2" style={{ fontSize: '1.2rem', maxWidth: 580, margin: '0 auto var(--space-8)' }}>
-            Upload your resume, paste any job description, and get an explainable AI analysis
-            with skill gaps, a personalized roadmap, and adaptive interview practice.
-          </p>
+        <div className="landing-metrics">
+          <span><strong>98.4%</strong> parsing precision</span><span><strong>8 lakh+</strong> roles indexed</span><span><strong>100%</strong> private and secure</span>
+        </div>
 
-          <div className="flex items-center justify-center gap-4 animate-fade-in-up stagger-3" style={{ flexWrap: 'wrap' }}>
-            {authed ? (
-              <Link to="/dashboard" className="btn btn-primary btn-lg">Go to Dashboard →</Link>
-            ) : (
-              <>
-                <Link to="/register" className="btn btn-primary btn-lg">Start for Free →</Link>
-                <Link to="/login" className="btn btn-secondary btn-lg">Sign In</Link>
-              </>
-            )}
+        {/* Live Interactive Sandbox */}
+        <section id="sandbox" style={{ padding: '2rem 0 4.5rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <div className="badge badge-neutral" style={{ marginBottom: '0.5rem' }}>Interactive Demonstration</div>
+            <h2>See How the Match Engine Analyzes Technical Profiles</h2>
+            <p>Select a benchmark role to preview real-time skill extraction, score breakdown, and gap detection.</p>
           </div>
 
-          {/* Stats row */}
-          <div className="grid-4 animate-fade-in-up stagger-4" style={{ maxWidth: 680, margin: '3rem auto 0', gap: 'var(--space-4)' }}>
+          {/* Role selector tabs */}
+          <div className="flex justify-center gap-2" style={{ marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            {DEMO_PROFILES.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setActiveProfile(p)}
+                className={`btn ${activeProfile.id === p.id ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                style={{ borderRadius: 'var(--radius-full)' }}
+              >
+                {p.role}
+              </button>
+            ))}
+          </div>
+
+          {/* Interactive Match Card Preview */}
+          <div className="pro-card" style={{ maxWidth: 960, margin: '0 auto' }}>
+            <div className="pro-card-header">
+              <div className="flex items-center gap-3">
+                <div className="brand-icon-box" style={{ width: 36, height: 36 }}>
+                  <IconTarget size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem' }}>{activeProfile.role}</h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Target Benchmark: {activeProfile.targetCompany}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="badge badge-success">
+                  <span className="badge-dot" />
+                  Score: {activeProfile.matchScore}%
+                </span>
+              </div>
+            </div>
+
+            <div className="pro-card-body">
+              <div className="grid-2" style={{ gap: '1.5rem', marginBottom: '1.5rem' }}>
+                {/* Matched Competencies */}
+                <div>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--matched)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Matched Competencies ({activeProfile.matchedSkills.length})
+                    </span>
+                    <span className="badge badge-success" style={{ fontSize: '0.72rem' }}>Verified</span>
+                  </div>
+                  <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                    {activeProfile.matchedSkills.map((s) => (
+                      <span key={s} className="skill-chip skill-chip-matched">
+                        <IconCheck size={12} strokeWidth={2.5} />
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Detected Skill Gaps */}
+                <div>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--gap)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Skill Gaps to Bridge ({activeProfile.gaps.length})
+                    </span>
+                    <span className="badge badge-warning" style={{ fontSize: '0.72rem' }}>Roadmap Action</span>
+                  </div>
+                  <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                    {activeProfile.gaps.map((s) => (
+                      <span key={s} className="skill-chip skill-chip-gap">
+                        <IconX size={12} strokeWidth={2.5} />
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sample Adaptive STAR Question Preview */}
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '1rem 1.25rem',
+              }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: '0.5rem' }}>
+                  <div className="flex items-center gap-2">
+                    <IconMic size={15} style={{ color: 'var(--brand-primary)' }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Targeted STAR Interview Question
+                    </span>
+                  </div>
+                  <span className="badge badge-neutral" style={{ fontSize: '0.72rem' }}>Technical Deep-Dive</span>
+                </div>
+                <p style={{ fontSize: '0.92rem', color: 'var(--text-primary)', fontStyle: 'italic', marginBottom: 0 }}>
+                  "{activeProfile.sampleQuestion}"
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4 Pillars of Architecture */}
+        <section style={{ padding: '3.5rem 0' }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="badge badge-neutral" style={{ marginBottom: '0.5rem' }}>System Architecture</div>
+            <h2>Built for Technical Depth and Complete Transparency</h2>
+            <p>Traditional ATS keyword checkers fail on nuance. CareerMatch AI uses multi-layered semantic evaluation.</p>
+          </div>
+
+          <div className="grid-2" style={{ gap: '1.5rem' }}>
             {[
-              { value: '95%', label: 'Accuracy' },
-              { value: '50+', label: 'Skills Detected' },
-              { value: '4x', label: 'Faster Prep' },
-              { value: '100%', label: 'Explainable' },
-            ].map(s => (
-              <div key={s.label} className="glass-card-static" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, background: 'var(--grad-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{s.value}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-              </div>
-            ))}
+              {
+                icon: IconFileText,
+                title: 'Deterministic & Semantic Resume Parsing',
+                desc: 'Extracts skills, work experience, certifications, and measurable impact metrics without stripping context or confusing synonyms.',
+                badge: 'Input Stage',
+              },
+              {
+                icon: IconTarget,
+                title: 'Explainable Multi-Factor Scoring',
+                desc: 'Clear mathematical weighting: 40% Required Skills, 30% Semantic Fit, 20% Experience Alignment, and 10% Preferred Qualifications.',
+                badge: 'Evaluation Engine',
+              },
+              {
+                icon: IconCompass,
+                title: 'Prioritized Skill Remediation Roadmap',
+                desc: 'Translates missing job requirements into structured engineering milestones with estimated hours and production capstone projects.',
+                badge: 'Growth Path',
+              },
+              {
+                icon: IconMic,
+                title: 'Adaptive STAR Interview Simulation',
+                desc: 'Generates targeted behavioral and technical questions based on your specific gaps and strengths, evaluated against strict rubrics.',
+                badge: 'Interview Prep',
+              },
+            ].map((f, idx) => {
+              const Icon = f.icon;
+              return (
+                <div key={idx} className="pro-card" style={{ padding: '1.75rem' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '1rem' }}>
+                    <div className="kpi-icon-box" style={{ background: 'var(--brand-subtle)', color: 'var(--brand-primary)' }}>
+                      <Icon size={18} />
+                    </div>
+                    <span className="badge badge-neutral">{f.badge}</span>
+                  </div>
+                  <h3 style={{ fontSize: '1.18rem', marginBottom: '0.5rem' }}>{f.title}</h3>
+                  <p style={{ fontSize: '0.9rem' }}>{f.desc}</p>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* How it works */}
-      <section style={{ padding: 'var(--space-20) var(--space-6)', background: 'rgba(255,255,255,0.02)' }}>
-        <div className="container">
-          <div className="section-header">
-            <span className="overline">How it works</span>
-            <h2>From Resume to <span className="gradient-text">Job-Ready</span> in Minutes</h2>
-            <p>A structured, AI-powered workflow that guides you from upload to offer-ready.</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-6)' }}>
-            {steps.map((step, i) => (
-              <div key={step.num} className="glass-card" style={{ padding: 'var(--space-6)' }}>
-                <div style={{
-                  fontSize: '2.5rem',
-                  fontWeight: 900,
-                  background: 'var(--grad-primary)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  lineHeight: 1,
-                  marginBottom: 'var(--space-4)',
-                  opacity: 0.8,
-                }}>{step.num}</div>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-2)' }}>{step.title}</h3>
-                <p style={{ fontSize: '0.9rem' }}>{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        {/* Comparison Matrix */}
+        <section style={{ padding: '3rem 0 5rem' }}>
+          <div className="pro-card" style={{ padding: '2rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <h2>Traditional Keyword Checkers vs. CareerMatch AI</h2>
+              <p>Why modern engineering hiring requires semantic understanding.</p>
+            </div>
 
-      {/* Features */}
-      <section style={{ padding: 'var(--space-20) var(--space-6)' }}>
-        <div className="container">
-          <div className="section-header">
-            <span className="overline">Features</span>
-            <h2>Everything You Need to <span className="gradient-text">Compete & Win</span></h2>
-            <p>Not just a score — a complete career intelligence system built for serious candidates.</p>
+            <div className="data-table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '30%' }}>Feature</th>
+                    <th style={{ width: '35%' }}>Traditional ATS Scanners</th>
+                    <th style={{ width: '35%', color: 'var(--brand-primary)' }}>CareerMatch AI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    {
+                      feature: 'Skill Extraction',
+                      traditional: 'Naive exact string match (fails on React vs React.js)',
+                      cm: 'Semantic NER with curated technical taxonomies',
+                    },
+                    {
+                      feature: 'Score Transparency',
+                      traditional: 'Black-box score with zero explanation',
+                      cm: 'Factor breakdown with verified weights',
+                    },
+                    {
+                      feature: 'Skill Gap Handling',
+                      traditional: 'Simple list of missing words',
+                      cm: 'Prioritized remediation roadmap with projects & hours',
+                    },
+                    {
+                      feature: 'Interview Connection',
+                      traditional: 'None — isolated document tool',
+                      cm: 'Adaptive questions tailored to your exact profile gaps',
+                    },
+                  ].map((row, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{row.feature}</td>
+                      <td>{row.traditional}</td>
+                      <td style={{ color: '#93c5fd', fontWeight: 500 }}>
+                        <div className="flex items-center gap-2">
+                          <IconCheck size={14} style={{ color: 'var(--matched)' }} />
+                          <span>{row.cm}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="grid-3">
-            {features.map((f, i) => (
-              <div key={f.title} className="glass-card" style={{ padding: 'var(--space-6)' }}>
-                <div style={{ fontSize: '2rem', marginBottom: 'var(--space-4)' }}>{f.icon}</div>
-                <h3 style={{ fontSize: '1.05rem', marginBottom: 'var(--space-2)' }}>{f.title}</h3>
-                <p style={{ fontSize: '0.9rem' }}>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section style={{
-        padding: 'var(--space-20) var(--space-6)',
-        textAlign: 'center',
-        position: 'relative',
-      }}>
-        <div className="orb orb-purple" style={{ width: 500, height: 500, top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h2 style={{ marginBottom: 'var(--space-5)' }}>
-            Ready to <span className="gradient-text">Match Smarter?</span>
-          </h2>
-          <p style={{ fontSize: '1.1rem', maxWidth: 480, margin: '0 auto var(--space-8)' }}>
-            Join thousands of candidates who are using AI to close skill gaps and land interviews faster.
+        {/* Bottom CTA */}
+        <section style={{
+          textAlign: 'center',
+          padding: '3rem 2rem',
+          background: 'linear-gradient(180deg, var(--bg-surface) 0%, #0d1527 100%)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-lg)',
+          marginBottom: '3rem',
+        }}>
+          <h2 style={{ marginBottom: '0.75rem' }}>Ready to Elevate Your Engineering Profile?</h2>
+          <p style={{ maxWidth: 560, margin: '0 auto 1.75rem' }}>
+            Upload your current resume or choose from sample profiles to get an instant, explainable technical diagnostic.
           </p>
-          {!authed && (
-            <Link to="/register" className="btn btn-primary btn-lg">
-              Get Started Free →
+          <div className="flex justify-center gap-3">
+            <Link to={authed ? "/dashboard" : "/register"} className="btn btn-primary btn-lg">
+              <span>{authed ? "Go to Dashboard" : "Create Free Account"}</span>
+              <IconArrowRight size={16} />
             </Link>
-          )}
-          {authed && (
-            <Link to="/resume" className="btn btn-primary btn-lg">
-              Upload Resume →
-            </Link>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Footer */}
-      <footer style={{ padding: 'var(--space-8) var(--space-6)', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          © 2026 CareerMatch AI — CSE Data Science Academic Project
-        </p>
-      </footer>
+      </div>
     </div>
   );
 }

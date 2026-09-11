@@ -11,6 +11,7 @@ import MatchResults from './pages/MatchResults';
 import SkillRoadmap from './pages/SkillRoadmap';
 import InterviewPrep from './pages/InterviewPrep';
 import Applications from './pages/Applications';
+import ProjectDetails from './pages/ProjectDetails';
 
 function ProtectedRoute({ children }) {
   return isAuthenticated() ? children : <Navigate to="/login" replace />;
@@ -21,9 +22,10 @@ function App() {
     <BrowserRouter>
       <Navbar />
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Navigate to={isAuthenticated() ? '/dashboard' : '/login'} replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/project-details" element={<ProjectDetails />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/resume" element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
         <Route path="/jd" element={<ProtectedRoute><JdAnalyzer /></ProtectedRoute>} />

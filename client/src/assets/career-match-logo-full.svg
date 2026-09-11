@@ -1,0 +1,62 @@
+<svg width="620" height="150" viewBox="0 0 620 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c-gradient" x1="8" y1="12" x2="120" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6E8FF"/>
+      <stop offset="0.1" stop-color="#F6E8FF"/>
+      <stop offset="0.1" stop-color="#E9C6FF"/>
+      <stop offset="0.2" stop-color="#E9C6FF"/>
+      <stop offset="0.2" stop-color="#C084FC"/>
+      <stop offset="0.32" stop-color="#C084FC"/>
+      <stop offset="0.32" stop-color="#A855F7"/>
+      <stop offset="0.45" stop-color="#A855F7"/>
+      <stop offset="0.45" stop-color="#9333EA"/>
+      <stop offset="0.58" stop-color="#9333EA"/>
+      <stop offset="0.58" stop-color="#7E22CE"/>
+      <stop offset="0.7" stop-color="#7E22CE"/>
+      <stop offset="0.7" stop-color="#6D28D9"/>
+      <stop offset="0.82" stop-color="#6D28D9"/>
+      <stop offset="0.82" stop-color="#5B21B6"/>
+      <stop offset="0.92" stop-color="#5B21B6"/>
+      <stop offset="0.92" stop-color="#4C1D95"/>
+      <stop offset="1" stop-color="#2E1065"/>
+    </linearGradient>
+    <linearGradient id="arrow-gradient" x1="76" y1="62" x2="132" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F1E3FF"/>
+    </linearGradient>
+    <linearGradient id="c-highlight" x1="28" y1="20" x2="86" y2="126" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7E9FF" stop-opacity="0.98"/>
+      <stop offset="0.3" stop-color="#D8A7FF" stop-opacity="0.62"/>
+      <stop offset="0.58" stop-color="#A855F7" stop-opacity="0.22"/>
+      <stop offset="0.82" stop-color="#7E22CE" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#5B21B6" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="c-shadow" x1="112" y1="34" x2="74" y2="145" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4C1D95" stop-opacity="0"/>
+      <stop offset="1" stop-color="#32105F" stop-opacity="0.82"/>
+    </linearGradient>
+    <linearGradient id="c-extrusion" x1="50" y1="92" x2="130" y2="154" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#39156F"/>
+      <stop offset="1" stop-color="#210C43"/>
+    </linearGradient>
+    <linearGradient id="arrow-edge" x1="82" y1="78" x2="138" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#CBB2F0"/>
+    </linearGradient>
+    <filter id="logo-shadow" x="-20%" y="-20%" width="150%" height="170%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#2B1256" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <g filter="url(#logo-shadow)">
+    <path d="M127 27C108 13 84 9 61 16C27 26 4 53 4 85C4 119 25 147 57 156C82 163 108 155 127 138L126 104C110 119 88 126 68 119C48 112 36 95 38 75C40 53 59 37 80 35C95 34 108 40 117 51L127 27Z" fill="url(#c-extrusion)"/>
+    <path d="M127 19C108 5 84 1 61 8C27 18 4 45 4 77C4 111 25 139 57 148C82 155 108 147 127 130L126 96C110 111 88 118 68 111C48 104 36 87 38 67C40 45 59 29 80 27C95 26 108 32 117 43L127 19Z" fill="url(#c-gradient)"/>
+    <path d="M61 8C27 18 4 45 4 77C4 111 25 139 57 148L69 111C49 104 37 87 39 67C41 45 59 29 80 27L92 10C81 6 71 6 61 8Z" fill="url(#c-highlight)"/>
+    <path d="M127 19C108 5 84 1 61 8L80 27C95 26 108 32 117 43L127 19ZM126 96C110 111 88 118 68 111L57 148C82 155 108 147 127 130L126 96Z" fill="url(#c-shadow)"/>
+    <path d="M75 91L146 49L139 120L120 97L96 118L75 91Z" fill="#32105F" fill-opacity="0.72"/>
+    <path d="M75 85L146 43L139 114L120 91L96 112L75 85Z" fill="url(#arrow-edge)" stroke="#35145F" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>
+    <path d="M82 82L139 48L134 58L82 91Z" fill="#FFFFFF" fill-opacity="0.7"/>
+  </g>
+  <text x="171" y="76" fill="#35145F" font-family="Arial, Helvetica, sans-serif" font-size="47" font-weight="700" letter-spacing="-2.1">CareerMatch</text>
+  <text x="465" y="76" fill="#A34CF4" font-family="Arial, Helvetica, sans-serif" font-size="47" font-weight="700" letter-spacing="-2.1">AI</text>
+  <text x="174" y="111" fill="#77558D" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="400" letter-spacing="0.4">Better Skills. Better Matches.</text>
+</svg>

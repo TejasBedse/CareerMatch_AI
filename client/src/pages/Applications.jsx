@@ -1,209 +1,266 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import {
+  IconBriefcase,
+  IconBuilding,
+  IconPlus,
+  IconCheck,
+  IconClock,
+  IconAlertCircle,
+  IconFilter
+} from '../components/Icons';
 
-const STATUS_OPTIONS = ['Applied', 'Assessment', 'Interview', 'Rejected', 'Selected'];
-const STATUS_COLORS = {
-  Applied: 'var(--info)',
-  Assessment: 'var(--warning)',
-  Interview: 'var(--accent-purple)',
-  Rejected: 'var(--error)',
-  Selected: 'var(--success)',
+const STATUS_OPTIONS = ['Applied', 'Assessment', 'Interview', 'Selected', 'Rejected'];
+
+const STATUS_BADGES = {
+  Applied: 'badge-neutral',
+  Assessment: 'badge-warning',
+  Interview: 'badge-brand',
+  Selected: 'badge-success',
+  Rejected: 'badge-error',
 };
-const STATUS_ICONS = {
-  Applied: '📤',
-  Assessment: '📝',
-  Interview: '🎙️',
-  Rejected: '❌',
-  Selected: '✅',
-};
-
-function AddForm({ onAdd }) {
-  const [form, setForm] = useState({ company: '', role: '', status: 'Applied', notes: '' });
-  const [loading, setLoading] = useState(false);
-
-  function onChange(e) { setForm(f => ({ ...f, [e.target.name]: e.target.value })); }
-
-  async function onSubmit(e) {
-    e.preventDefault();
-    if (!form.company || !form.role) return;
-    setLoading(true);
-    try {
-      await onAdd({ ...form, appliedAt: new Date().toISOString() });
-      setForm({ company: '', role: '', status: 'Applied', notes: '' });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <form onSubmit={onSubmit} className="glass-card-static" style={{ padding: 'var(--space-6)', marginBottom: 'var(--space-6)' }}>
-      <h3 style={{ marginBottom: 'var(--space-4)' }}>+ Track New Application</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 'var(--space-4)', alignItems: 'end', flexWrap: 'wrap' }}>
-        <div className="form-group">
-          <label className="form-label" htmlFor="app-company">Company</label>
-          <input id="app-company" className="form-input" name="company" placeholder="e.g. Google" value={form.company} onChange={onChange} required />
-        </div>
-        <div className="form-group">
-          <label className="form-label" htmlFor="app-role">Role</label>
-          <input id="app-role" className="form-input" name="role" placeholder="e.g. Data Scientist" value={form.role} onChange={onChange} required />
-        </div>
-        <div className="form-group">
-          <label className="form-label" htmlFor="app-status">Status</label>
-          <select id="app-status" className="form-input" name="status" value={form.status} onChange={onChange}>
-            {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-      </div>
-      <div className="form-group" style={{ marginTop: 'var(--space-3)' }}>
-        <label className="form-label" htmlFor="app-notes">Notes (optional)</label>
-        <input id="app-notes" className="form-input" name="notes" placeholder="e.g. Applied via LinkedIn, referral from Sarah" value={form.notes} onChange={onChange} />
-      </div>
-      <button id="add-application-btn" type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: 'var(--space-4)' }}>
-        {loading ? <><span className="spinner" style={{ width: 16, height: 16 }} /> Adding…</> : '+ Add Application'}
-      </button>
-    </form>
-  );
-}
 
 export default function Applications() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [form, setForm] = useState({ company: '', role: '', status: 'Applied', notes: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [readiness, setReadiness] = useState(null);
 
-  // Load from server or localStorage fallback
   useEffect(() => {
     api.getApplications()
-      .then(data => setApps(Array.isArray(data) ? data : data.applications || []))
+      .then((data) => setApps(Array.isArray(data) ? data : data.applications || []))
       .catch(() => {
         const saved = localStorage.getItem('cm_applications');
-        if (saved) setApps(JSON.parse(saved));
+        if (saved) {
+          try { setApps(JSON.parse(saved)); } catch (e) { setApps([]); }
+        }
       })
       .finally(() => setLoading(false));
+    api.getReadiness().then(setReadiness).catch(() => setReadiness(null));
   }, []);
 
-  async function handleAdd(appData) {
-    const newApp = { ...appData, id: Date.now().toString() };
-    const updated = [newApp, ...apps];
-    setApps(updated);
-    localStorage.setItem('cm_applications', JSON.stringify(updated));
-    try { await api.addApplication(newApp); } catch {}
+  async function handleAdd(e) {
+    e.preventDefault();
+    if (!form.company.trim() || !form.role.trim()) return;
+    setSubmitting(true);
+    try {
+      const newApp = await api.addApplication({
+        ...form,
+        appliedAt: new Date().toISOString(),
+      });
+      const updated = [newApp, ...apps];
+      setApps(updated);
+      localStorage.setItem('cm_applications', JSON.stringify(updated));
+      setForm({ company: '', role: '', status: 'Applied', notes: '' });
+      setShowAddForm(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  async function handleStatusChange(id, status) {
-    const updated = apps.map(a => a.id === id ? { ...a, status } : a);
+  async function handleStatusChange(id, newStatus) {
+    const updated = apps.map((a) => (a.id === id ? { ...a, status: newStatus } : a));
     setApps(updated);
     localStorage.setItem('cm_applications', JSON.stringify(updated));
-    try { await api.updateApplication(id, status); } catch {}
+    api.updateApplication(id, newStatus).catch(console.error);
   }
 
-  function handleDelete(id) {
-    const updated = apps.filter(a => a.id !== id);
-    setApps(updated);
-    localStorage.setItem('cm_applications', JSON.stringify(updated));
-  }
-
-  const filtered = filter === 'All' ? apps : apps.filter(a => a.status === filter);
-
-  // Stats
-  const stats = STATUS_OPTIONS.reduce((acc, s) => {
-    acc[s] = apps.filter(a => a.status === s).length;
-    return acc;
-  }, {});
+  const filtered = filter === 'All' ? apps : apps.filter((a) => a.status === filter);
 
   return (
     <div className="page-wrapper">
-      <div className="container" style={{ padding: 'var(--space-8) var(--space-6)' }}>
-        <div className="animate-fade-in-up">
-          <div style={{ marginBottom: 'var(--space-8)' }}>
-            <h1 style={{ marginBottom: 'var(--space-2)' }}>Application Tracker</h1>
-            <p>Track your job applications and monitor your progress through the hiring pipeline.</p>
-          </div>
+      <div className="container" style={{ maxWidth: 1040 }}>
 
-          {/* Stats Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'var(--space-4)', marginBottom: 'var(--space-8)' }}>
-            <div className="glass-card-static" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{apps.length}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total</div>
+        {/* Header */}
+        <div className="flex justify-between items-center" style={{ marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div className="inline-flex items-center gap-2 badge badge-neutral" style={{ marginBottom: '0.35rem' }}>
+              <IconBriefcase size={13} />
+              <span>Pipeline Intelligence</span>
             </div>
-            {STATUS_OPTIONS.map(s => (
-              <div key={s} className="glass-card-static" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 2 }}>{STATUS_ICONS[s]}</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: STATUS_COLORS[s] }}>{stats[s] || 0}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{s}</div>
+            <h1>Job Application Tracker</h1>
+            <p>Monitor your active technical job applications and interview lifecycle stages.</p>
+            {readiness?.applicationReadiness && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <span className={`badge ${readiness.applicationReadiness.decision === 'READY TO APPLY' ? 'badge-success' : readiness.applicationReadiness.decision === 'LOW MATCH' ? 'badge-error' : 'badge-warning'}`}>
+                  {readiness.applicationReadiness.decision}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '0.6rem' }}>Decision support based on your current evidence</span>
               </div>
-            ))}
+            )}
           </div>
 
-          {/* Add Form */}
-          <AddForm onAdd={handleAdd} />
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            <IconPlus size={15} />
+            <span>{showAddForm ? 'Close Form' : 'Log New Application'}</span>
+          </button>
+        </div>
 
-          {/* Filter */}
-          <div className="tabs" style={{ marginBottom: 'var(--space-6)' }}>
-            {['All', ...STATUS_OPTIONS].map(s => (
-              <button key={s} className={`tab-btn ${filter === s ? 'active' : ''}`} onClick={() => setFilter(s)}>
-                {s === 'All' ? 'All' : `${STATUS_ICONS[s]} ${s}`}
-              </button>
-            ))}
-          </div>
-
-          {/* Applications List */}
-          {loading ? (
-            <div className="flex justify-center" style={{ padding: 'var(--space-8)' }}>
-              <span className="spinner" style={{ width: 36, height: 36 }} />
+        {/* Quick Add Form Drawer */}
+        {showAddForm && (
+          <div className="pro-card animate-fade-in" style={{ marginBottom: '2rem' }}>
+            <div className="pro-card-header">
+              <h3 style={{ fontSize: '1.05rem' }}>Log Technical Job Application</h3>
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="glass-card-static" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 'var(--space-4)' }}>📭</div>
-              <h3>No applications {filter !== 'All' ? `with status "${filter}"` : 'yet'}</h3>
-              <p>Add your first application using the form above.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {filtered.map(app => (
-                <div key={app.id} className="glass-card" style={{ padding: 'var(--space-5)' }}>
-                  <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 700, fontSize: '1rem' }}>{app.company}</span>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>·</span>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{app.role}</span>
-                        {app.appliedAt && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {new Date(app.appliedAt).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                      {app.notes && (
-                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{app.notes}</div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {/* Status Selector */}
-                      <select
-                        className="form-input"
-                        style={{ width: 'auto', padding: 'var(--space-2) var(--space-3)', fontSize: '0.85rem', color: STATUS_COLORS[app.status] }}
-                        value={app.status}
-                        onChange={e => handleStatusChange(app.id, e.target.value)}
-                      >
-                        {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
-                      </select>
-
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ color: 'var(--error)', fontSize: '1.1rem', padding: 'var(--space-2)' }}
-                        onClick={() => handleDelete(app.id)}
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
-                    </div>
+            <div className="pro-card-body">
+              <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="grid-3">
+                  <div className="form-group">
+                    <label className="form-label">Company Name</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Stripe, OpenAI, Figma"
+                      value={form.company}
+                      onChange={(e) => setForm({ ...form, company: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Target Role</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Senior Backend Engineer"
+                      value={form.role}
+                      onChange={(e) => setForm({ ...form, role: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Initial Status</label>
+                    <select
+                      className="form-select"
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    >
+                      {STATUS_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              ))}
+
+                <div className="form-group">
+                  <label className="form-label">Notes / Referral Details</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Applied via Ashby, employee referral from Marcus"
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setShowAddForm(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Adding…' : 'Save Application'}
+                  </button>
+                </div>
+              </form>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Filter Pills */}
+        <div className="flex gap-2" style={{ marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          {['All', ...STATUS_OPTIONS].map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setFilter(opt)}
+              className={`btn ${filter === opt ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+              style={{ borderRadius: 'var(--radius-full)' }}
+            >
+              {opt}
+            </button>
+          ))}
         </div>
+
+        {/* Applications Data Table */}
+        <div className="pro-card">
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Company & Role</th>
+                  <th>Current Status</th>
+                  <th>Notes</th>
+                  <th>Applied Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                      No applications recorded under this filter. Click "Log New Application" to add one.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((app) => (
+                    <tr key={app.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="kpi-icon-box" style={{ width: 32, height: 32 }}>
+                            <IconBuilding size={16} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{app.role}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{app.company}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <select
+                          className="form-select"
+                          style={{
+                            padding: '0.25rem 0.6rem',
+                            fontSize: '0.78rem',
+                            width: 'auto',
+                            display: 'inline-block',
+                          }}
+                          value={app.status}
+                          onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                        >
+                          {STATUS_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ fontSize: '0.84rem' }}>
+                        {app.notes || '—'}
+                      </td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {app.appliedAt ? new Date(app.appliedAt).toLocaleDateString() : 'Recent'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   );

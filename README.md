@@ -1,6 +1,6 @@
 # CareerMatch AI
 
-CareerMatch AI is a full-stack career intelligence platform built from the project specification in [CareerMatch_AI_spec.md](CareerMatch_AI_spec.md). This repository currently includes the working backend MVP that handles authentication, resume parsing, job description analysis, explainable matching, and basic dashboard data.
+CareerMatch AI is a full-stack career intelligence platform built from the project specification in [CareerMatch_AI_spec.md](CareerMatch_AI_spec.md). It compares resume evidence with job requirements using an explainable EAMS score and connects gaps to roadmap actions, interview practice, readiness, and job comparison.
 
 ## Project status
 
@@ -8,9 +8,16 @@ CareerMatch AI is a full-stack career intelligence platform built from the proje
 - Authentication: implemented with JWT
 - Resume upload and parsing: implemented
 - JD analysis: implemented
-- Match engine: implemented
-- Test coverage: included for core flows
-- Frontend UI: not yet implemented in this workspace
+- EAMS match engine: implemented
+- Evidence-aware skill analysis: implemented
+- Explainable match and evidence map: implemented
+- Prioritized roadmap actions: implemented
+- Truth-guarded resume suggestions: implemented
+- Adaptive interview practice: implemented
+- Career/application readiness: implemented
+- Multi-job comparison: implemented
+- Frontend UI: implemented with Vite/React
+- Test coverage: included for core flows and security ownership checks
 
 ## Tech stack
 
@@ -35,7 +42,9 @@ Before running locally, make sure you have:
 - [CareerMatch_AI_spec.md](CareerMatch_AI_spec.md) — complete project specification and source of truth
 - [server/package.json](server/package.json) — backend package configuration
 - [server/index.js](server/index.js) — Express server and API implementation
+- [server/services](server/services) — scoring, evidence, roadmap, resume, interview, readiness, and comparison services
 - [server/test/test-all.js](server/test/test-all.js) — verification tests for authentication and job-match flow
+- [client/src](client/src) — Vite/React application and existing UI pages
 
 ## Local setup
 
@@ -73,6 +82,20 @@ Before running locally, make sure you have:
    ```
 
 ## Run the project locally
+
+Start the backend from `server`, then start the frontend from `client` in a second terminal:
+
+```powershell
+cd server
+npm.cmd start
+```
+
+```powershell
+cd client
+npm.cmd run dev
+```
+
+Open `http://localhost:5173`.
 
 ### Option 1: Start the app with the project script
 
@@ -183,6 +206,20 @@ Example request body:
 ### Dashboard
 
 - GET /api/dashboard
+- GET /api/readiness
+- GET /api/ai/status
+
+### Intelligence
+
+- POST /api/skill-gap-analysis
+- POST /api/resume-ai/suggestions
+- GET /api/resumes/:id/evidence
+- POST /api/interview/start
+- POST /api/interview/answer
+- GET /api/jobs
+- POST /api/matches/compare
+
+Resume image uploads use the optional Tesseract.js OCR dependency. If OCR is unavailable or confidence is low, the API returns an extraction warning and the UI keeps manual text entry available.
 
 This endpoint requires authentication.
 
@@ -201,18 +238,23 @@ This verifies:
 - login works
 - resume upload works
 - JD analysis works
-- matching works
+- EAMS scoring and contributions work
+- evidence classification works
+- roadmap prioritization works
+- truth-guarded resume suggestions work
+- adaptive interview selection works
+- readiness calculations work
+- multi-job comparison works
+- cross-user match access is denied
 
 ## Expected outcome
 
-The local backend should start successfully and return a 200 response at the health endpoint. The API is ready to support future front-end development and additional feature modules from the spec, including:
+The local backend should start successfully and return a 200 response at the health endpoint. The current implementation remains an in-memory development deployment; MongoDB persistence, production secret management, OCR service deployment, and external AI provider integration remain deployment work.
 
-- resume versioning
-- adaptive mock interviews
-- roadmap tracking
-- application feedback loops
-- multi-role comparison
+## Deployment readiness
 
-## Next development steps
-
-The next milestone after this backend MVP is to build the frontend UI and connect it to the existing API endpoints. The project can then expand into the full product flow described in [CareerMatch_AI_spec.md](CareerMatch_AI_spec.md).
+- Frontend deployment config: [client/vercel.json](client/vercel.json)
+- Backend deployment config: [railway.json](railway.json)
+- Store `JWT_SECRET`, database credentials, and AI provider keys in deployment environment variables.
+- Do not use the development JWT fallback in production.
+- `npm audit --omit=dev` reports two moderate transitive `qs` advisories through Express 4; resolving them requires a planned Express-major migration.
