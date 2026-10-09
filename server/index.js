@@ -17,7 +17,7 @@ const { buildInterviewQuestions, evaluateInterviewAnswer, selectAdaptiveQuestion
 const { calculateCareerReadiness } = require('./services/readinessService');
 const { compareJobs } = require('./services/comparisonService');
 const { recognizeImage } = require('./services/ocrService');
-const { getProviderStatus } = require('./services/aiService');
+const { getProviderStatus, analyzeResumeWithGemini, analyzeJDWithGemini, ai } = require('./services/aiService');
 require('dotenv').config();
 
 const app = express();
@@ -33,10 +33,26 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
 ];
+const configuredOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const corsOrigins = new Set([...allowedOrigins, ...configuredOrigins]);
+
+function isAllowedOrigin(origin) {
+  if (!origin || corsOrigins.has(origin)) return true;
+
+  try {
+    const parsedOrigin = new URL(origin);
+    return parsedOrigin.protocol === 'https:' && parsedOrigin.hostname.endsWith('.vercel.app');
+  } catch {
+    return false;
+  }
+}
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
@@ -215,8 +231,22 @@ async function extractTextFromUploadedFile(file) {
   throw new Error('Unsupported file type. Please upload a PDF, DOCX, DOC, or TXT file.');
 }
 
-function createResumeRecord({ userId, candidateName, targetRole, resumeText, extractionWarning = '' }) {
-  const parsedProfile = inferStructureFromResume(resumeText);
+async function createResumeRecord({ userId, candidateName, targetRole, resumeText, extractionWarning = '' }) {
+  let parsedProfile;
+  if (ai) {
+    parsedProfile = await analyzeResumeWithGemini(resumeText);
+  }
+  
+  if (!parsedProfile || !parsedProfile.skills) {
+    parsedProfile = inferStructureFromResume(resumeText);
+  } else {
+    parsedProfile.candidateName = parsedProfile.candidateName || candidateName || 'Candidate';
+    parsedProfile.skills = parsedProfile.skills.map(s => normalizeSkillValue(s)) || [];
+    parsedProfile.education = parsedProfile.education || 'Education details not specified';
+    parsedProfile.experience = parsedProfile.experience || 'Experience details not specified';
+    parsedProfile.summary = parsedProfile.summary || 'No summary provided';
+  }
+
   parsedProfile.skillEvidence = analyzeSkillEvidence(parsedProfile.skills, resumeText);
   const resumeId = uuidv4();
   const resumeRecord = {
@@ -281,6 +311,29 @@ function buildJdProfile(jdInput) {
   };
 }
 
+async function buildJdProfileAsync(jdInput) {
+  let jdProfile;
+  if (ai) {
+    jdProfile = await analyzeJDWithGemini(jdInput.text);
+  }
+  
+  if (!jdProfile || !jdProfile.requiredSkills) {
+    return buildJdProfile(jdInput);
+  }
+  
+  return {
+    jdId: uuidv4(),
+    title: jdInput.title || 'Target Role',
+    company: jdInput.company || 'Company Not Specified',
+    requiredSkills: jdProfile.requiredSkills.map(s => normalizeSkillValue(s)) || [],
+    preferredSkills: jdProfile.preferredSkills.map(s => normalizeSkillValue(s)) || [],
+    educationRequirement: jdProfile.educationRequirement || 'Not specified',
+    experienceRequirement: jdProfile.experienceRequirement || 'Not specified',
+    responsibilities: jdProfile.responsibilities || [],
+    rawText: jdInput.text,
+  };
+}
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'CareerMatch AI API', timestamp: new Date().toISOString() });
 });
@@ -336,7 +389,7 @@ app.post('/api/auth/login', async (req, res) => {
   });
 });
 
-app.post('/api/resumes/upload', authMiddleware, (req, res) => {
+app.post('/api/resumes/upload', authMiddleware, async (req, res) => {
   const { resumeText, candidateName, targetRole } = req.body || {};
   const resolvedName = candidateName && String(candidateName).trim()
     ? String(candidateName).trim()
@@ -354,7 +407,7 @@ app.post('/api/resumes/upload', authMiddleware, (req, res) => {
     return res.status(400).json({ message: 'Resume text is required.' });
   }
 
-  const result = createResumeRecord({
+  const result = await createResumeRecord({
     userId: req.user.id,
     candidateName: resolvedName,
     targetRole: String(targetRole).trim(),
@@ -388,7 +441,7 @@ app.post('/api/resumes/upload-file', authMiddleware, upload.single('resumeFile')
       return res.status(400).json({ message: 'The uploaded file did not contain readable resume text.' });
     }
 
-    const result = createResumeRecord({
+    const result = await createResumeRecord({
       userId: req.user.id,
       candidateName,
       targetRole,
@@ -419,14 +472,14 @@ app.post('/api/resume-ai/suggestions', authMiddleware, (req, res) => {
   });
 });
 
-app.post('/api/jd/analyze', authMiddleware, (req, res) => {
+app.post('/api/jd/analyze', authMiddleware, async (req, res) => {
   const { title, company, text } = req.body || {};
 
   if (!text) {
     return res.status(400).json({ message: 'Job description text is required.' });
   }
 
-  const jdProfile = buildJdProfile({ title, company, text });
+  const jdProfile = await buildJdProfileAsync({ title, company, text });
   jdProfile.userId = req.user.id;
   jds.set(jdProfile.jdId, jdProfile);
 

@@ -48,6 +48,35 @@ test('health endpoint is available', async () => {
   assert.equal(payload.status, 'ok');
 });
 
+test('Vercel-hosted demo registration and login requests pass CORS', async () => {
+  const app = createApp();
+  const origin = 'https://careermatch-preview.vercel.app';
+
+  await withServer(app, async (port) => {
+    const registerResponse = await fetch(`http://127.0.0.1:${port}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: origin },
+      body: JSON.stringify({
+        name: 'Alex Morgan',
+        email: 'demo@careermatch.ai',
+        password: 'demo123456',
+      }),
+    });
+
+    assert.equal(registerResponse.status, 201);
+    assert.equal(registerResponse.headers.get('access-control-allow-origin'), origin);
+
+    const loginResponse = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: origin },
+      body: JSON.stringify({ email: 'demo@careermatch.ai', password: 'demo123456' }),
+    });
+
+    assert.equal(loginResponse.status, 200);
+    assert.equal(loginResponse.headers.get('access-control-allow-origin'), origin);
+  });
+});
+
 test('EAMS calculates the reference evidence-aware score', () => {
   const result = calculateMatchScore({
     skills: ['python', 'sql', 'machine learning', 'power bi'],
