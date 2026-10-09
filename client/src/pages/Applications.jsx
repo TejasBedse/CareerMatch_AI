@@ -110,6 +110,7 @@ export default function Applications() {
           src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80"
           alt="A team meeting to review job opportunities and next steps"
           title="Application Pipeline"
+          variant="wide"
         />
 
         {/* Quick Add Form Drawer */}

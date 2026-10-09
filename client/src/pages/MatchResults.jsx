@@ -173,6 +173,7 @@ export default function MatchResults() {
           src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1600&q=80"
           alt="A laptop displaying a data dashboard and charts"
           title="Explainable Match Report"
+          variant="thumbnail"
         />
 
         {/* Top Overview Card: Score Ring + 4-Factor Breakdown */}

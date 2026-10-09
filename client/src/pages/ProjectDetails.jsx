@@ -63,6 +63,7 @@ export default function ProjectDetails() {
           src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1600&q=80"
           alt="A group collaborating around a table with laptops"
           title="CareerMatch AI Platform"
+          variant="feature"
         />
 
         <section className="pro-card" style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(255, 255, 255, 0.7))' }}>

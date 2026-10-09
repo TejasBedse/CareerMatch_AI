@@ -255,6 +255,7 @@ export default function InterviewPrep() {
           src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1600&q=80"
           alt="A professional preparing for an interview"
           title="Interview Practice"
+          variant="inline"
         />
 
         <div className="ai-interview-shell">

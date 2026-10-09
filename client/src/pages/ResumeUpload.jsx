@@ -150,6 +150,7 @@ export default function ResumeUpload() {
           src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=1600&q=80"
           alt="A resume document being reviewed at a desk"
           title="Resume Intelligence"
+          variant="compact"
         />
 
         {step === 'result' ? (
