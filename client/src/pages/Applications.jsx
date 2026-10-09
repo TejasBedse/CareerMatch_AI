@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import SectionImage from '../components/SectionImage';
 import {
   IconBriefcase,
   IconBuilding,
@@ -104,6 +105,12 @@ export default function Applications() {
             <span>{showAddForm ? 'Close Form' : 'Log New Application'}</span>
           </button>
         </div>
+
+        <SectionImage
+          src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80"
+          alt="A team meeting to review job opportunities and next steps"
+          title="Application Pipeline"
+        />
 
         {/* Quick Add Form Drawer */}
         {showAddForm && (

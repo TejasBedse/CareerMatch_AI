@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import ScoreRing from '../components/ScoreRing';
 import ProgressBar from '../components/ProgressBar';
 import { api } from '../services/api';
+import SectionImage from '../components/SectionImage';
 import {
   IconTarget,
   IconCheck,
@@ -167,6 +168,12 @@ export default function MatchResults() {
           </div>
           <ReadinessBadge score={overallScore} />
         </div>
+
+        <SectionImage
+          src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1600&q=80"
+          alt="A laptop displaying a data dashboard and charts"
+          title="Explainable Match Report"
+        />
 
         {/* Top Overview Card: Score Ring + 4-Factor Breakdown */}
         <div className="pro-card" style={{ marginBottom: '1.5rem' }}>

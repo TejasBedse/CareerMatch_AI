@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api, getUser } from '../services/api';
+import SectionImage from '../components/SectionImage';
 import {
   IconFileText,
   IconUpload,
@@ -144,6 +145,12 @@ export default function ResumeUpload() {
             <span>Job Match Evaluation</span>
           </div>
         </div>
+
+        <SectionImage
+          src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=1600&q=80"
+          alt="A resume document being reviewed at a desk"
+          title="Resume Intelligence"
+        />
 
         {step === 'result' ? (
           /* Result View */

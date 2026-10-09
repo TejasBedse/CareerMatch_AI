@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, getUser } from '../services/api';
 import ProgressBar from '../components/ProgressBar';
 import ScoreRing from '../components/ScoreRing';
+import SectionImage from '../components/SectionImage';
 import careerMatchLogo from '../assets/career-match-logo-full.svg';
 import {
   IconFileText,
@@ -153,6 +154,12 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        <SectionImage
+          src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80"
+          alt="A bright collaborative office workspace"
+          title="Career Dashboard"
+        />
 
         {/* 4 KPI Metrics */}
         <div className="grid-4" style={{ marginBottom: '2rem' }}>

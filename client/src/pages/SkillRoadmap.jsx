@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import ProgressBar from '../components/ProgressBar';
+import SectionImage from '../components/SectionImage';
 import {
   IconCompass,
   IconClock,
@@ -164,6 +165,12 @@ export default function SkillRoadmap() {
             </Link>
           </div>
         </div>
+
+        <SectionImage
+          src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80"
+          alt="A person studying technical material at a laptop"
+          title="Skills Roadmap"
+        />
 
         {/* Overview Progress Card */}
         <div className="pro-card" style={{ padding: '1.5rem 1.75rem', marginBottom: '2rem' }}>

@@ -132,6 +132,56 @@ a:hover {
   padding: 2.5rem 0 4rem;
 }
 
+.section-image {
+  position: relative;
+  height: 156px;
+  margin: 0 0 1.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(20, 54, 61, 0.12);
+  border-radius: 8px;
+  background: #dce9e6;
+  isolation: isolate;
+}
+
+.section-image::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(12, 28, 31, 0.52), rgba(12, 28, 31, 0.04) 78%);
+  content: '';
+}
+
+.section-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 48%;
+}
+
+.section-image figcaption {
+  position: absolute;
+  z-index: 1;
+  left: 1.25rem;
+  bottom: 1rem;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 640px) {
+  .section-image {
+    height: 112px;
+    margin-bottom: 1.25rem;
+  }
+
+  .section-image figcaption {
+    left: 0.9rem;
+    bottom: 0.7rem;
+  }
+}
+
 .flex { display: flex; }
 .inline-flex { display: inline-flex; }
 .items-center { align-items: center; }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
+import SectionImage from '../components/SectionImage';
 import {
   IconMic,
   IconSparkles,
@@ -249,6 +250,12 @@ export default function InterviewPrep() {
           </div>
           <div className="ai-interview-status"><span className="ai-status-pulse" /> {sessionLoading ? 'Preparing your interview...' : 'AI interviewer ready'}</div>
         </div>
+
+        <SectionImage
+          src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1600&q=80"
+          alt="A professional preparing for an interview"
+          title="Interview Practice"
+        />
 
         <div className="ai-interview-shell">
           <div className="ai-interview-topbar">
